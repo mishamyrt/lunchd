@@ -9,6 +9,10 @@ pub(crate) fn render(agent: &LaunchAgent) -> String {
     plist.push_string(&agent.label);
     plist.push_key("RunAtLoad");
     plist.push_bool(agent.run_at_load);
+    if let Some(start_on_mount) = agent.start_on_mount {
+        plist.push_key("StartOnMount");
+        plist.push_bool(start_on_mount);
+    }
 
     render_program_arguments(&mut plist, &agent.program_arguments);
     maybe_render_path(

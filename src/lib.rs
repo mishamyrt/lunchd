@@ -61,6 +61,12 @@ pub struct LaunchAgent {
     #[builder(default = "false")]
     pub run_at_load: bool,
 
+    /// Whether the Launch Agent should be started on mount.
+    ///
+    /// Note: `launchd` does not report which device has been mounted.
+    #[builder(setter(strip_option), default)]
+    pub start_on_mount: Option<bool>,
+
     /// The working directory for the Launch Agent's program.
     #[builder(setter(into, strip_option), default)]
     pub working_directory: Option<PathBuf>,
