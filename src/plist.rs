@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn render_uses_expected_process_type_and_keep_alive() {
         let agent = LaunchAgent::builder(LABEL)
-            .arg("/tmp/co.myrt.lunchctl")
+            .arg("/tmp/co.myrt.lunchd")
             .process_type(ProcessType::Interactive)
             .keep_alive(KeepAlive::SuccessfulExit)
             .build()

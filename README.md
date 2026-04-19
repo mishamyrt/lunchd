@@ -35,7 +35,7 @@ cargo add lunchd
 ## Usage
 
 ```rust
-let agent = LaunchAgent::builder("co.myrt.lunchctl")
+let agent = LaunchAgent::builder("co.myrt.lunchd")
         .arg("/usr/bin/tail")
         .arg("-f")
         .arg("/dev/null")

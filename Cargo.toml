@@ -5,9 +5,9 @@ version = "0.1.0"
 authors = ["Mikhael Khrustik <misha@myrt.co>"]
 edition = "2021"
 rust-version = "1.80"
-homepage = "https://github.com/mishamyrt/lunchctl"
-documentation = "https://github.com/mishamyrt/lunchctl"
-repository = "https://github.com/mishamyrt/lunchctl"
+homepage = "https://github.com/mishamyrt/lunchd"
+documentation = "https://github.com/mishamyrt/lunchd"
+repository = "https://github.com/mishamyrt/lunchd"
 license = "MIT"
 
 [dependencies]

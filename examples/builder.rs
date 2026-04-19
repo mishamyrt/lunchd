@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs();
 
-    let agent = LaunchAgent::builder("co.myrt.lunchctl")
+    let agent = LaunchAgent::builder("co.myrt.lunchd")
         .arg("/usr/bin/tail")
         .arg("-f")
         .arg("/dev/null")
