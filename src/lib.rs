@@ -206,6 +206,11 @@ impl LaunchAgent {
         launchctl::check_is_running(service_target)
             .map_err(AgentError::LaunchCtlFailed)
     }
+
+    /// Returns `true` if the launch agent exists on disk.
+    pub fn exists(&self) -> bool {
+        self.path().ok().as_ref().is_some_and(|p| p.exists())
+    }
 }
 
 impl LaunchAgentBuilder {

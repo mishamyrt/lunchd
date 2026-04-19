@@ -1,10 +1,10 @@
 [package]
 name = "lunchd"
 description = "Library for convenient management of background services and startup items in macOS."
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mikhael Khrustik <misha@myrt.co>"]
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.82"
 homepage = "https://github.com/mishamyrt/lunchd"
 documentation = "https://github.com/mishamyrt/lunchd"
 repository = "https://github.com/mishamyrt/lunchd"
