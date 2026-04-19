@@ -50,14 +50,35 @@ fn maybe_render_keep_alive(
         KeepAlive::Always => {
             plist.push_bool(true);
         }
-        KeepAlive::UntilSuccessfulExit => {
-            plist.open_dict();
-            plist.push_key("SuccessfulExit");
-            plist.push_bool(false);
-            plist.close_dict();
-        }
         KeepAlive::Disabled => {
             plist.push_bool(false);
+        }
+        KeepAlive::SuccessfulExit => {
+            plist.open_dict();
+            plist.push_key("SuccessfulExit");
+            plist.push_bool(true);
+            plist.close_dict();
+        }
+        KeepAlive::Crashed => {
+            plist.open_dict();
+            plist.push_key("Crashed");
+            plist.push_bool(true);
+            plist.close_dict();
+        }
+        KeepAlive::NetworkState(enabled) => {
+            plist.open_dict();
+            plist.push_key("NetworkState");
+            plist.push_bool(*enabled);
+            plist.close_dict();
+        }
+        KeepAlive::PathExists(path) | KeepAlive::PathNotExists(path) => {
+            plist.open_dict();
+            plist.push_key("PathState");
+            plist.open_dict();
+            plist.push_key(path.to_str().expect("incorrect path"));
+            plist.push_bool(matches!(keep_alive, KeepAlive::PathExists(_)));
+            plist.close_dict();
+            plist.close_dict();
         }
     }
 }
@@ -141,9 +162,9 @@ impl PlistBuilder {
 
     fn push_bool(&mut self, value: bool) {
         if value {
-            self.push_line("<true />");
+            self.push_line("<true/>");
         } else {
-            self.push_line("<false />");
+            self.push_line("<false/>");
         }
     }
 
@@ -247,7 +268,7 @@ mod tests {
         let agent = LaunchAgent::builder(LABEL)
             .arg("/tmp/co.myrt.lunchctl")
             .process_type(ProcessType::Interactive)
-            .keep_alive(KeepAlive::UntilSuccessfulExit)
+            .keep_alive(KeepAlive::SuccessfulExit)
             .build()
             .unwrap();
         let plist = render(&agent);

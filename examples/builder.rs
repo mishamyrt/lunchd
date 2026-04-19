@@ -1,6 +1,6 @@
 #![allow(clippy::print_stdout)]
 
-use lunchctl::{LaunchAgent, KeepAlive};
+use lunchd::{LaunchAgent, KeepAlive};
 use std::thread;
 use std::time::Duration;
 
@@ -14,19 +14,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-f")
         .arg("/dev/null")
         .env("TIMESTAMP", &timestamp.to_string())
-        .keep_alive(KeepAlive::Always)
+        .keep_alive(KeepAlive::Crashed)
         .run_at_load(true)
         .build()
         .unwrap();
 
-    println!("Installing '{}' {}", agent.label, agent.path()?.display());
-    agent.install()?;
+    println!("{}", agent.as_string());
 
-    thread::sleep(Duration::from_millis(300));
-    println!("Is running: {}", agent.is_running()?);
+    // println!("Installing '{}' {}", agent.label, agent.path()?.display());
+    // agent.install()?;
 
-    println!("Uninstalling '{}'", agent.label);
-    agent.uninstall()?;
+    // thread::sleep(Duration::from_millis(300));
+    // println!("Is running: {}", agent.is_running()?);
+
+    // println!("Uninstalling '{}'", agent.label);
+    // agent.uninstall()?;
 
     Ok(())
 }

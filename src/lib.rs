@@ -105,8 +105,17 @@ pub enum KeepAlive {
     /// Always keep the agent running.
     /// If the agent exits with any code, it will be restarted automatically.
     Always,
-    /// Keep the agent running only until it exits successfully.
-    UntilSuccessfulExit,
+    /// Start agent running only until it exits successfully.
+    SuccessfulExit,
+    /// Start agent running only until it exits successfully, and restart if it crashes.
+    Crashed,
+    /// Setting this variant to true will start the job when/while any network is/becomes available.
+    /// Setting this variant to false will start the job when/while all network connections are down.
+    NetworkState(bool),
+    /// Start agent running only while the given paths exists.
+    PathExists(PathBuf),
+    /// Start agent running only while the given paths does not exist.
+    PathNotExists(PathBuf),
     /// Do not restart the agent automatically if it exits.
     Disabled,
 }
@@ -147,16 +156,21 @@ impl LaunchAgent {
             .join(format!("{}.plist", self.label)))
     }
 
+    /// Renders the launch agent plist as a string.
+    pub fn as_string(&self) -> String {
+        plist::render(self)
+    }
+
     /// Installs the launch agent by writing its plist file and bootstrapping it with launchctl.
     pub fn install(&self) -> Result<(), AgentError> {
         let domain = launchctl::GuiDomain::current();
         let service_target = launchctl::ServiceTarget::new(domain, &self.label);
         let agent_path = self.path()?;
-        let agent_content = plist::render(self);
 
         // Remove any existing service with the same label
         let _ = launchctl::bootout(service_target);
 
+        let agent_content = self.as_string();
         fs::write(&agent_path, &agent_content).map_err(AgentError::FailedToWrite)?;
 
         launchctl::bootstrap(domain, &agent_path)
