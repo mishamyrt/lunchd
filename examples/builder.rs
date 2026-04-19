@@ -21,14 +21,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", agent.as_string());
 
-    // println!("Installing '{}' {}", agent.label, agent.path()?.display());
-    // agent.install()?;
+    println!("Installing '{}' {}", agent.label, agent.path()?.display());
+    agent.install()?;
 
-    // thread::sleep(Duration::from_millis(300));
-    // println!("Is running: {}", agent.is_running()?);
+    thread::sleep(Duration::from_millis(300));
+    println!("Is running: {}", agent.is_running()?);
 
-    // println!("Uninstalling '{}'", agent.label);
-    // agent.uninstall()?;
+    println!("Uninstalling '{}'", agent.label);
+    agent.uninstall()?;
 
     Ok(())
 }
