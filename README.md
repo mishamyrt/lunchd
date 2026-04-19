@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./docs/logo.svg" height="30px" />
+    <img src="./docs/logo.svg" height="60px" />
 </p>
 
 <h1 align="center">lunchd</h1>
