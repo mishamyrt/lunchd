@@ -1,7 +1,7 @@
 [package]
 name = "lunchd"
 description = "Library for convenient management of background services and startup items in macOS."
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Mikhael Khrustik <misha@myrt.co>"]
 edition = "2021"
 rust-version = "1.82"

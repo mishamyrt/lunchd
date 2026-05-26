@@ -1,7 +1,7 @@
 mod launchctl;
 mod plist;
 
-use std::{env, path::PathBuf, fs};
+use std::{env, fs, path::PathBuf};
 
 use derive_builder::{Builder};
 use thiserror::Error;
@@ -173,8 +173,11 @@ impl LaunchAgent {
         let service_target = launchctl::ServiceTarget::new(domain, &self.label);
         let agent_path = self.path()?;
 
-        // Remove any existing service with the same label
-        let _ = launchctl::bootout(service_target);
+        match launchctl::bootout(service_target) {
+            Ok(()) => {}
+            Err(error) if error.is_service_not_found() => {}
+            Err(error) => return Err(AgentError::LaunchCtlFailed(error)),
+        }
 
         let agent_content = self.as_string();
         fs::write(&agent_path, &agent_content).map_err(AgentError::FailedToWrite)?;
@@ -183,19 +186,23 @@ impl LaunchAgent {
             .map_err(AgentError::LaunchCtlFailed)
     }
 
-    /// Uninstalls the launch agent by removing its plist file and bootstrapping it with launchctl.
+    /// Uninstalls the launch agent by booting it out with launchctl and removing its plist file.
     pub fn uninstall(&self) -> Result<(), AgentError> {
         let domain = launchctl::GuiDomain::current();
         let service_target = launchctl::ServiceTarget::new(domain, &self.label);
         let agent_path = self.path()?;
 
-        if !agent_path.exists() {
-            return Err(AgentError::NotFound);
+        match launchctl::bootout(service_target) {
+            Ok(()) => {}
+            Err(error) if error.is_service_not_found() => {}
+            Err(error) => return Err(AgentError::LaunchCtlFailed(error)),
         }
 
-        fs::remove_file(&agent_path).map_err(AgentError::FailedToRemove)?;
-
-        launchctl::bootout(service_target).map_err(AgentError::LaunchCtlFailed)
+        match fs::remove_file(&agent_path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(AgentError::FailedToRemove(error)),
+        }
     }
 
     /// Returns `true` if the launch agent is currently running.
@@ -204,6 +211,15 @@ impl LaunchAgent {
         let service_target = launchctl::ServiceTarget::new(domain, &self.label);
 
         launchctl::check_is_running(service_target)
+            .map_err(AgentError::LaunchCtlFailed)
+    }
+
+    /// Returns `true` if the launch agent is currently loaded in launchd.
+    pub fn is_loaded(&self) -> Result<bool, AgentError> {
+        let domain = launchctl::GuiDomain::current();
+        let service_target = launchctl::ServiceTarget::new(domain, &self.label);
+
+        launchctl::check_is_loaded(service_target)
             .map_err(AgentError::LaunchCtlFailed)
     }
 

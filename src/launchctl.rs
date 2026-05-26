@@ -1,7 +1,12 @@
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 use thiserror::Error;
+
+const BOOTSTRAP_RETRY_COUNT: usize = 3;
+const BOOTSTRAP_RETRY_DELAY: Duration = Duration::from_millis(250);
 
 unsafe extern "C" {
     /// Returns the effective user ID of the current process.
@@ -37,7 +42,7 @@ impl GuiDomain {
 
     /// Formats this GUI domain as an argument for launchctl commands.
     fn as_argument(self) -> String {
-        format!("gui/{}/", self.uid)
+        format!("gui/{}", self.uid)
     }
 }
 
@@ -60,8 +65,22 @@ impl<'a> ServiceTarget<'a> {
 }
 
 pub(crate) fn bootstrap(domain: GuiDomain, plist_path: &Path) -> Result<()> {
-    let args = bootstrap_args(domain, plist_path);
-    run_launchctl(&args).map(|_| ())
+    let mut last_error = None;
+    for attempt in 0..BOOTSTRAP_RETRY_COUNT {
+        let args = bootstrap_args(domain, plist_path);
+        match run_launchctl(&args) {
+            Ok(_) => return Ok(()),
+            Err(error) if error.is_retryable_bootstrap_error() => {
+                last_error = Some(error);
+                if attempt + 1 < BOOTSTRAP_RETRY_COUNT {
+                    thread::sleep(BOOTSTRAP_RETRY_DELAY);
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(last_error.expect("retry loop should store a failed bootstrap error"))
 }
 
 pub(crate) fn bootout(service_target: ServiceTarget<'_>) -> Result<()> {
@@ -73,6 +92,36 @@ pub(crate) fn check_is_running(service_target: ServiceTarget<'_>) -> Result<bool
     let args = print_args(service_target);
     let output = run_launchctl(&args)?;
     Ok(is_running(&output))
+}
+
+pub(crate) fn check_is_loaded(service_target: ServiceTarget<'_>) -> Result<bool> {
+    let args = print_args(service_target);
+    match run_launchctl(&args) {
+        Ok(_) => Ok(true),
+        Err(error) if error.is_service_not_found() => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+impl LaunchCtlError {
+    pub(crate) fn is_service_not_found(&self) -> bool {
+        match self {
+            Self::CommandExecutionFailed(_) => false,
+            Self::CommandFailed(stderr) => {
+                stderr.contains("No such process")
+                    || stderr.contains("Could not find service")
+            }
+        }
+    }
+
+    fn is_retryable_bootstrap_error(&self) -> bool {
+        match self {
+            Self::CommandExecutionFailed(_) => false,
+            Self::CommandFailed(stderr) => {
+                stderr.contains("Bootstrap failed: 5: Input/output error")
+            }
+        }
+    }
 }
 
 /// Returns `true` if the output contains running flag.
@@ -119,8 +168,8 @@ fn print_args(service_target: ServiceTarget<'_>) -> [OsString; 2] {
 #[cfg(test)]
 mod tests {
     use super::{
-        GuiDomain, ServiceTarget, bootout_args, bootstrap_args, print_args,
-        is_running,
+        GuiDomain, LaunchCtlError, ServiceTarget, bootout_args, bootstrap_args,
+        is_running, print_args,
     };
     use std::ffi::OsString;
     use std::path::Path;
@@ -133,7 +182,7 @@ mod tests {
 
     #[test]
     fn gui_domain_formats_domain_target() {
-        assert_eq!(GuiDomain::new(501).as_argument(), "gui/501/");
+        assert_eq!(GuiDomain::new(501).as_argument(), "gui/501");
     }
 
     #[test]
@@ -156,11 +205,7 @@ mod tests {
 
         assert_eq!(
             stringify_args(&args),
-            [
-                "bootstrap",
-                "gui/501/",
-                "/tmp/co.myrt.nanomiddleclick.plist",
-            ]
+            ["bootstrap", "gui/501", "/tmp/co.myrt.nanomiddleclick.plist",]
         );
     }
 
@@ -220,5 +265,33 @@ mod tests {
         }
         ";
         assert!(!is_running(output));
+    }
+
+    #[test]
+    fn launchctl_errors_classify_missing_services() {
+        assert!(LaunchCtlError::CommandFailed(
+            "Boot-out failed: 3: No such process".to_string()
+        )
+        .is_service_not_found());
+        assert!(
+            LaunchCtlError::CommandFailed("Could not find service".to_string())
+                .is_service_not_found()
+        );
+        assert!(!LaunchCtlError::CommandFailed(
+            "Bootstrap failed: 5: Input/output error".to_string()
+        )
+        .is_service_not_found());
+    }
+
+    #[test]
+    fn launchctl_errors_classify_retryable_bootstrap_failures() {
+        assert!(LaunchCtlError::CommandFailed(
+            "Bootstrap failed: 5: Input/output error".to_string()
+        )
+        .is_retryable_bootstrap_error());
+        assert!(!LaunchCtlError::CommandFailed(
+            "Boot-out failed: 3: No such process".to_string()
+        )
+        .is_retryable_bootstrap_error());
     }
 }
